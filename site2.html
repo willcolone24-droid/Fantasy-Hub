@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wild Card — Will's Fantasy Baseball Hub</title>
+<style>
+:root{
+ --bg:#f6f7f9;--bg2:#eef0f3;--panel:#ffffff;--panel2:#f4f5f7;--panel3:#eaecef;
+ --line:#e3e6ea;--line2:#d2d6dc;--tx:#1a1d21;--tx2:#3a3f46;--mut:#697079;
+ --red:#d50a0a;--blu:#0b6ec9;--teal:#0b6ec9;--grn:#1a8a3f;--gold:#b8780f;--org:#e36b00;--ink:#ffffff;
+ --pink:#d50a0a;--purple:#0b6ec9;--yellow:#c8860a;--navy:#16181c;
+ --rad:10px;--shadow:0 1px 3px rgba(20,28,40,.08),0 1px 1px rgba(20,28,40,.04);
+ --mono:"SF Mono",ui-monospace,"Roboto Mono",Menlo,Consolas,monospace;}
+*{box-sizing:border-box}
+body{margin:0;color:var(--tx);background:var(--bg);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding:0 18px}
+b,.num{font-variant-numeric:tabular-nums}
+/* header / HUD — ESPN dark top strip */
+header{position:sticky;top:0;z-index:60;background:#16181c;border-bottom:3px solid var(--red);box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.topline{display:none}
+.htop{display:flex;align-items:center;gap:13px;padding:11px 0 9px}
+.logo{width:40px;height:40px;border-radius:8px;flex:0 0 auto;position:relative;background:var(--red);box-shadow:none}
+.logo:before,.logo:after{content:"";position:absolute;top:10px;bottom:10px;width:8px;border:2px solid #fff;border-radius:50%}
+.logo:before{left:10px;border-right:none;border-top:none;transform:rotate(8deg)}
+.logo:after{right:10px;border-left:none;border-bottom:none;transform:rotate(8deg)}
+.brandwrap{flex:1 1 auto;min-width:0}
+h1.brand{font-size:19px;margin:0;letter-spacing:.5px;font-weight:800;text-transform:uppercase;color:#fff}
+h1.brand span{color:#fff;background:var(--red);padding:0 6px;border-radius:4px;margin-left:2px}
+.sub{color:#9aa2ad;font-size:11px;margin-top:2px}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:.6px;color:#fff;background:var(--red);border:none;padding:5px 10px;border-radius:5px;text-transform:uppercase}
+.livedot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.6s infinite}
+@keyframes pulse{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
+.hud{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;background:#2a2d33;border:1px solid #2a2d33;border-radius:8px;overflow:hidden;margin:2px 0 10px}
+@media(max-width:760px){.hud{grid-auto-flow:row;grid-template-columns:repeat(3,1fr);grid-auto-columns:auto}}
+@media(max-width:460px){.hud{grid-template-columns:repeat(2,1fr)}}
+.hud-tile{background:#1d2025;padding:8px 12px;min-width:0}
+.hud-tile .k{font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:#8b929b;font-weight:700}
+.hud-tile .v{font-size:14px;font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;color:#fff}
+/* nav */
+nav{display:flex;gap:2px;flex-wrap:wrap;padding-bottom:8px}
+nav button{background:transparent;border:none;color:#c4cad2;padding:8px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+nav button:hover{color:#fff;background:#23262c}
+nav button.active{color:#fff;background:transparent;box-shadow:inset 0 -3px 0 var(--red)}
+main{padding:20px 0 64px}
+.tab{display:none}.tab.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+@media(max-width:520px){.cards{grid-template-columns:repeat(2,1fr);gap:10px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:14px 15px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)}
+.card .lab{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.7px;font-weight:700}
+.card .big{font-size:28px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums;color:var(--tx)}
+.card .note{font-size:11px;color:var(--mut);margin-top:3px}
+.acc{display:none}
+.sec{font-size:13px;font-weight:800;margin:24px 0 12px;display:flex;align-items:center;gap:9px;letter-spacing:.4px;text-transform:uppercase;color:var(--tx)}
+.sec .pip{width:5px;height:16px;border-radius:2px;background:var(--red)}
+.sec:after{content:"";flex:1;height:1px;background:var(--line)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:14px;margin-bottom:14px;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 9px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:#f1f3f5;color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none;z-index:2;border-bottom:2px solid var(--line2)}
+th:hover{color:var(--red)}
+td.l,th.l{text-align:left}
+tbody tr{cursor:pointer;transition:background .1s}
+tbody tr:nth-child(even){background:#fafbfc}
+tbody tr:hover{background:#eef5fb}
+.tbl{overflow:auto;max-height:76vh;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:var(--shadow);-webkit-overflow-scrolling:touch}
+.ph{width:32px;height:32px;border-radius:50%;background:#e6e9ee;object-fit:cover;vertical-align:middle;border:1px solid var(--line2)}
+.pcell{display:flex;align-items:center;gap:8px;text-align:left}
+.pcell .nm{font-weight:700}
+.tag{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:4px;display:inline-block;letter-spacing:.2px}
+.chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#eef1f4;color:var(--tx2);border:1px solid var(--line2)}
+.fa{background:#fdeef0;color:#b00735;border-color:#f3cdd5}
+.tr-hot{color:var(--org);font-weight:800}.tr-cold{color:var(--blu);font-weight:800}.tr-steady{color:var(--mut)}
+.tier{font-weight:800;padding:2px 7px;border-radius:4px;font-size:10px;letter-spacing:.2px;text-transform:uppercase}
+.t-Elite{background:#e4f4ea;color:#137a3a;border:1px solid #b9e2c8}
+.t-Strong{background:#e4eefb;color:#0b6ec9;border:1px solid #bcd6f3}
+.t-Solid{background:#eef1f4;color:#41506a;border:1px solid var(--line2)}
+.t-Role{background:#fbf1da;color:#9a6310;border:1px solid #ecd9ab}
+.t-Bench{background:#fbe6e6;color:#c01818;border:1px solid #f2c4c4}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input,select{background:#fff;border:1px solid var(--line2);color:var(--tx);padding:9px 11px;border-radius:7px;font-size:13px;outline:none}
+input:focus,select:focus{border-color:var(--blu);box-shadow:0 0 0 3px rgba(11,110,201,.12)}
+.seg{display:inline-flex;background:#eef1f4;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{background:transparent;border:none;color:var(--mut);padding:8px 13px;cursor:pointer;font-weight:700;font-size:12px}
+.seg button.on{background:var(--red);color:#fff}
+.btn{background:var(--red);border:none;color:#fff;padding:9px 14px;border-radius:7px;cursor:pointer;font-weight:700;font-size:13px}
+.btn.g{background:#eef1f4;color:var(--tx);border:1px solid var(--line2)}
+.btn.sm{padding:6px 11px;font-size:12px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:8px;margin-bottom:8px;border:1px solid var(--line);background:#fff;border-left-width:3px;box-shadow:var(--shadow)}
+.alert .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto}
+.a-warn{border-left-color:var(--gold)}.a-warn .dot{background:var(--gold)}
+.a-buy{border-left-color:var(--grn)}.a-buy .dot{background:var(--grn)}
+.a-sell{border-left-color:var(--org)}.a-sell .dot{background:var(--org)}
+.a-good{border-left-color:var(--blu)}.a-good .dot{background:var(--blu)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:820px){.two{grid-template-columns:1fr}}
+.muted{color:var(--mut)}.lgd{font-size:11px;color:var(--mut);margin-top:8px;line-height:1.5}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:11px}
+@media(max-width:480px){.pgrid{grid-template-columns:1fr 1fr;gap:9px}}
+.pc{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:13px;cursor:pointer;transition:.12s;box-shadow:var(--shadow)}
+.pc:hover{border-color:var(--blu);box-shadow:0 3px 10px rgba(11,110,201,.14)}
+.pc .top{display:flex;gap:10px;align-items:center}
+.pc .ph2{width:50px;height:50px;border-radius:50%;background:#e6e9ee;object-fit:cover;border:2px solid var(--line2)}
+.pc .nm{font-weight:800;font-size:13.5px}.pc .meta{font-size:11px;color:var(--mut);margin-top:1px}
+.pc .stats{display:flex;justify-content:space-between;margin-top:11px;border-top:1px solid var(--line);padding-top:9px}
+.pc .stat{text-align:center}.pc .stat b{font-size:16px;display:block;font-variant-numeric:tabular-nums;color:var(--tx)}.pc .stat span{font-size:9px;color:var(--mut);text-transform:uppercase}
+.ov{position:fixed;inset:0;background:rgba(20,28,40,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:18px}
+.ov.on{display:flex}
+.modal{background:#fff;border:1px solid var(--line2);border-radius:12px;max-width:580px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(20,28,40,.3)}
+.mhead{display:flex;gap:14px;align-items:center;padding:18px;background:#16181c;color:#fff}
+.mhead img{width:72px;height:72px;border-radius:50%;background:#e6e9ee;object-fit:cover;border:2px solid var(--red)}
+.mhead .nm{font-size:20px;font-weight:800;color:#fff}.mhead .meta{color:#aab1ba;font-size:12px;margin-top:3px}
+.mbody{padding:16px 18px}
+.mrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:520px){.mrow{grid-template-columns:repeat(2,1fr)}}
+.mstat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px;text-align:center}
+.mstat b{font-size:16px;display:block;font-variant-numeric:tabular-nums;color:var(--tx)}.mstat span{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px}
+.mclose{position:absolute;top:14px;right:16px;color:#fff;background:rgba(255,255,255,.18);border:none;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:16px}
+.sugg{border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:10px;background:#fff}
+.bar{height:15px;border-radius:7px;background:#e6e9ee;overflow:hidden;display:flex;margin:6px 0;border:1px solid var(--line2)}
+.bar .g{background:var(--grn)}.bar .r{background:var(--red)}
+.verdict{font-size:22px;font-weight:800}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:20px}
+.tk{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line2);border-radius:16px;padding:4px 10px;font-size:12px}
+.tk .x{color:var(--red);cursor:pointer;font-weight:800}
+ul.tt{margin:7px 0;padding-left:18px}ul.tt li{margin:5px 0;color:var(--tx2)}
+.pill2{font-size:11px;padding:2px 9px;border-radius:16px;background:#e4eefb;color:var(--blu);font-weight:700;border:1px solid #bcd6f3}
+/* clickable name + tooltip */
+.pn{cursor:pointer;color:var(--blu);border-bottom:1px dotted transparent;transition:.1s}
+.pn:hover{color:var(--red);border-bottom-color:var(--red)}
+.ptip{position:absolute;z-index:200;display:none;background:#fff;border:1px solid var(--line2);border-radius:9px;padding:11px;box-shadow:0 10px 30px rgba(20,28,40,.22);pointer-events:none;font-size:12px}
+.ptip-h{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.ptip-h img{width:36px;height:36px;border-radius:50%;background:#e6e9ee;object-fit:cover;border:1px solid var(--line2)}
+.ptip-m{font-size:10.5px;color:var(--mut);margin-top:1px}
+.ptip-r{display:flex;justify-content:space-between;gap:6px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px 0;margin-bottom:7px}
+.ptip-r span{font-size:9.5px;color:var(--mut);text-transform:uppercase;text-align:center}.ptip-r b{display:block;font-size:13px;color:var(--tx);margin-top:2px}
+.ptip-s{font-size:11.5px;color:var(--tx2)}
+/* day nav + matchup */
+.daynav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.daynav button{background:#eef1f4;border:1px solid var(--line2);color:var(--mut);padding:7px 13px;border-radius:7px;cursor:pointer;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+.daynav button.on{background:var(--red);color:#fff;border-color:var(--red)}
+.mx-scoreboard{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;background:#16181c;border:1px solid #16181c;border-radius:10px;padding:16px;margin-bottom:12px;color:#fff}
+.mx-nm{font-size:12.5px;font-weight:700;color:#c8ced6;text-transform:uppercase;letter-spacing:.4px}
+.mx-tot{font-size:36px;font-weight:800;font-variant-numeric:tabular-nums;color:#fff;line-height:1}
+.mx-mid{text-align:center;font-size:12.5px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.6px}
+.mx-sub{font-size:9px;color:#9aa2ad;font-weight:700;letter-spacing:.4px}
+.mxtbl td{border-bottom:1px solid var(--line)}
+.mx-me{text-align:right}.mx-op{text-align:left}
+.mx-slot{font-size:10px;font-weight:800;color:var(--mut);background:#f1f3f5;width:46px}
+.mx-pt{display:inline-block;min-width:34px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--tx2);padding:0 8px}
+.mx-pt.win{color:var(--grn)}
+.mx-pt.act{color:var(--tx);font-weight:900}
+.mx-me .mx-pt{margin-left:8px}.mx-op .mx-pt{margin-right:8px}
+.mx-sec td{background:#f1f3f5;color:var(--tx);font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.5px;text-align:left}
+.mx-total td{border-top:2px solid var(--line2);background:#eef5fb;font-weight:800}
+.mx-total td b{font-size:15px;color:var(--red)}
+/* profile */
+.prof{max-width:860px}
+.prof-head{display:flex;gap:16px;align-items:center;padding:18px;background:#16181c;border-radius:12px;margin:10px 0 8px;color:#fff}
+.prof-img{width:90px;height:90px;border-radius:50%;background:#e6e9ee;object-fit:cover;border:3px solid var(--red)}
+.prof-nm{font-size:24px;font-weight:800;color:#fff}
+.prof-meta{color:#aab1ba;font-size:13px;margin-top:4px}
+@media(max-width:560px){.wrap{padding:0 12px}.mx-tot{font-size:28px}.prof-img{width:64px;height:64px}.prof-nm{font-size:20px}h1.brand{font-size:16px}.card .big{font-size:24px}}
+
+</style></head>
+<body>
+<header>
+ <div class="topline"></div>
+ <div class="wrap">
+ <div class="htop">
+ <div class="logo"></div>
+ <div class="brandwrap"><h1 class="brand">WILD CARD <span>HUB</span></h1>
+ <div class="sub">Will's Wild Team · 2026 Fantasy Baseball · H2H Points · League #622960213 · refreshed Jun 29</div></div>
+ <div class="live"><span class="livedot"></span> Live · MP14</div>
+ </div>
+ <div class="hud" id="hud"></div>
+ <nav id="nav"></nav>
+ </div>
+</header>
+<main class="wrap">
+ <div class="tab" id="t-dash"></div>
+ <div class="tab" id="t-matchup"></div>
+ <div class="tab" id="t-team"></div>
+ <div class="tab" id="t-players"></div>
+ <div class="tab" id="t-trade"></div>
+ <div class="tab" id="t-strategy"></div>
+ <div class="tab" id="t-analytics"></div>
+ <div class="tab" id="t-profile"></div>
+</main>
+<div class="ov" id="ov"><div class="modal" id="modal" style="position:relative"></div></div>
+<script>
+const DATA=/*__DATA__*/null;
+const P=DATA.players, WWT="WWT";
+const TN=DATA.teamNames;
+const byId=id=>P.find(p=>p.id===id);
+const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const photo=id=>`https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${id}.png&w=80&h=80&scale=crop&cquality=40`;
+const ph=(id,c="ph")=>`<img class="${c}" loading="lazy" src="${photo(id)}" onerror="this.style.opacity=0">`;
+const injTxt=i=>i?`<span class="tag" style="background:#fdeef0;color:#b00735">${i.replace(/_DAY_DL/,'').replace('TEN','IL10').replace('FIFTEEN','IL15').replace('SIXTY','IL60').replace('SEVEN','IL7').replace('DAY_TO_DAY','DTD').replace('BEREAVEMENT','BRV').replace('SUSPENSION','SUSP')}</span>`:"";
+const trendTxt=t=>t==="hot"?'<span class="tr-hot">▲ Hot</span>':t==="cold"?'<span class="tr-cold">▼ Cold</span>':'<span class="tr-steady">→ Steady</span>';
+const tierTxt=t=>`<span class="tier t-${t}">${t}</span>`;
+const TABS=[["dash","Dashboard"],["matchup","Matchup"],["team","My Team"],["players","Player Universe"],["trade","Waiver Hub"],["analytics","Analytics"],["strategy","Strategy"]];
+const nav=document.getElementById("nav");
+TABS.forEach(([id,l])=>{const b=document.createElement("button");b.textContent=l;b.id="n-"+id;b.onclick=()=>show(id);nav.appendChild(b)});
+function show(id){TABS.forEach(([t])=>{document.getElementById("t-"+t).classList.toggle("active",t===id);document.getElementById("n-"+t).classList.toggle("active",t===id)});const pr=document.getElementById("t-profile");if(pr)pr.classList.remove("active");scrollTo(0,0)}
+
+/* ---- modal ---- */
+const ov=document.getElementById("ov");ov.onclick=e=>{if(e.target===ov)ov.classList.remove("on")};
+/* ---- player profile (full screen) + hover tooltip ---- */
+function advList(p){return p.type==="H"
+ ? [["AVG",p.st.AVG],["OBP",p.st.OBP],["SLG",p.st.SLG],["OPS",p.st.OPS],["HR",p.st.HR],["R",p.st.R],["RBI",p.st.RBI],["SB",p.st.SB],["BB",p.st.BB],["K",p.st.K],["ISO",p.st.ISO],["BB%",p.st["BB%"]],["K%",p.st["K%"]],["PA",p.st.PA]]
+ : [["ERA",p.st.ERA],["WHIP",p.st.WHIP],["K/9",p.st.K9],["K",p.st.K],["W",p.st.W],["L",p.st.L],["SV",p.st.SV],["HD",p.st.HD],["IP",p.st.IP],["GS",p.st.GS],["K/BB",p.st["K/BB"]],["BB/9",p.st.BB9],["H/9",p.st.H9]];}
+let profileBack="dash";
+function openP(id){const p=byId(+id);if(!p)return;
+ const cur=TABS.find(([t])=>document.getElementById("t-"+t).classList.contains("active"));
+ if(cur)profileBack=cur[0];
+ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+ const adv=advList(p);
+ const el=document.getElementById("t-profile");
+ el.innerHTML=`<button class="btn g sm" onclick="show(profileBack)">← Back</button>
+ <div class="prof">
+ <div class="prof-head">
+ <img class="prof-img" src="${photo(p.id)}" onerror="this.style.opacity=0">
+ <div><div class="prof-nm">${esc(p.name)} ${injTxt(p.inj)}</div>
+ <div class="prof-meta">${esc(p.pos)} · ${p.mlb} · ${p.ft==="FA"?'<span class="chip fa">Free Agent</span>':'Rostered: '+esc(TN[p.ft]||p.ft)}</div>
+ <div style="margin-top:9px">${tierTxt(p.tier)} ${trendTxt(p.trend)}</div></div>
+ </div>
+ <div class="sec"><span class="pip"></span>Production & Projection</div>
+ <div class="mrow">
+ <div class="mstat"><b>${p.std??'-'}</b><span>Season Pts</span></div>
+ <div class="mstat"><b style="color:var(--gold)">${p.myros}</b><span>My ROS</span></div>
+ <div class="mstat"><b style="color:var(--grn)">${p.projWk}</b><span>Proj Week</span></div>
+ <div class="mstat"><b>${p.projDay}</b><span>Proj / Day</span></div>
+ </div>
+ <div class="mrow">
+ <div class="mstat"><b>${p.l30??'-'}</b><span>Last 30</span></div>
+ <div class="mstat"><b>${p.l15??'-'}</b><span>Last 15</span></div>
+ <div class="mstat"><b>${p.l7??'-'}</b><span>Last 7</span></div>
+ ${p.type==="P"?`<div class="mstat"><b>${p.startsWk==null?'-':p.startsWk}</b><span>Starts Wk</span></div>`:`<div class="mstat"><b>${p.st.HR??'-'}</b><span>HR</span></div>`}
+ </div>
+ ${profAnalytics(p)}
+ <div class="sec"><span class="pip"></span>2026 Stats & Advanced Metrics</div>
+ <div class="mrow" style="grid-template-columns:repeat(4,1fr)">${adv.map(([k,v])=>`<div class="mstat"><b>${v??'-'}</b><span>${k}</span></div>`).join("")}</div>
+ </div>`;
+ el.classList.add("active");scrollTo(0,0);
+}
+/* hover tooltip */
+let tipEl=null;
+function tipHTML(p){
+ const line=p.type==="H"
+ ? `AVG ${(p.st.AVG??0).toFixed(3).replace(/^0/,'')} · ${p.st.HR} HR · ${p.st.RBI} RBI · ${p.st.SB} SB`
+ : `${p.st.ERA} ERA · ${p.st.WHIP} WHIP · ${p.st.K} K · ${p.st.SV} SV`;
+ return `<div class="ptip-h"><img src="${photo(p.id)}" onerror="this.style.opacity=0"><div><b>${esc(p.name)}</b><div class="ptip-m">${esc(p.pos)} · ${p.mlb} ${trendTxt(p.trend)}</div></div></div>
+ <div class="ptip-r"><span>L7 <b>${p.l7??'-'}</b></span><span>L15 <b>${p.l15??'-'}</b></span><span>L30 <b>${p.l30??'-'}</b></span><span>Wk <b style="color:var(--grn)">${p.projWk??'-'}</b></span></div>
+ <div class="ptip-s">${line}</div>`;
+}
+function tipShow(node){const p=byId(+node.dataset.id);if(!p)return;
+ if(!tipEl){tipEl=document.createElement("div");tipEl.className="ptip";document.body.appendChild(tipEl);}
+ tipEl.innerHTML=tipHTML(p);tipEl.style.display="block";
+ const r=node.getBoundingClientRect();
+ const w=236,left=Math.max(8,Math.min(window.innerWidth-w-8,r.left));
+ tipEl.style.left=left+"px";tipEl.style.top=(window.scrollY+r.bottom+7)+"px";tipEl.style.width=w+"px";
+}
+function tipHide(){if(tipEl)tipEl.style.display="none";}
+document.addEventListener("mouseover",e=>{const el=e.target.closest&&e.target.closest(".pn[data-id]");if(el)tipShow(el);});
+document.addEventListener("mouseout",e=>{const el=e.target.closest&&e.target.closest(".pn[data-id]");if(el)tipHide();});
+document.addEventListener("click",e=>{const el=e.target.closest&&e.target.closest(".pn[data-id]");if(el){e.stopPropagation();openP(el.dataset.id);}},true);
+
+
+/* ---- sortable table ---- */
+function tableEl(rows,cols,sortKey){
+ let dir=-1,sk=sortKey;
+ const wrap=document.createElement("div");wrap.className="tbl";const t=document.createElement("table");wrap.appendChild(t);
+ const gv=(o,k)=>{if(k in o)return o[k];if(o.st&&k in o.st)return o.st[k];return null};
+ function draw(){rows.sort((a,b)=>{let x=gv(a,sk),y=gv(b,sk);if(x==null)x=-1e9;if(y==null)y=-1e9;if(typeof x==="string")return dir*x.localeCompare(y);return dir*(x-y)});
+ t.innerHTML="<thead><tr>"+cols.map(c=>`<th class="${c.l?'l':''}" data-k="${c.k}">${c.t}${sk===c.k?(dir<0?" ▾":" ▴"):""}</th>`).join("")+"</tr></thead><tbody>"+
+ rows.map(r=>"<tr data-id='"+r.id+"'>"+cols.map(c=>`<td class="${c.l?'l':''}">${c.r(r)}</td>`).join("")+"</tr>").join("")+"</tbody>";
+ t.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sk)dir*=-1;else{sk=k;dir=-1}draw()});
+ t.querySelectorAll("tbody tr").forEach(tr=>tr.onclick=()=>openP(tr.dataset.id));
+ }
+ draw();return wrap;
+}
+const nmCell=r=>`<div class="pcell">${ph(r.id)}<span class="nm pn" data-id="${r.id}">${esc(r.name)}</span> ${injTxt(r.inj)}</div>`;
+function hitterCols(showFt){return [
+ {k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},
+ {k:"pos",t:"Pos",r:r=>r.pos},showFt?{k:"ft",t:"Fantasy",r:r=>r.ft==="FA"?'<span class="chip fa">FA</span>':`<span class="chip">${r.ft}</span>`}:null,
+ {k:"std",t:"Szn Pts",r:r=>`<b>${r.std??'-'}</b>`},{k:"l30",t:"L30",r:r=>r.l30??'-'},
+ {k:"myros",t:"My ROS",r:r=>`<b style="color:var(--gold)">${r.myros}</b>`},{k:"projWk",t:"Proj Wk",r:r=>`<b style="color:var(--grn)">${r.projWk??'-'}</b>`},{k:"projDay",t:"Proj/Day",r:r=>r.projDay??'-'},{k:"trend",t:"Trend",r:r=>trendTxt(r.trend)},
+ {k:"tier",t:"Tier",r:r=>tierTxt(r.tier)},
+ {k:"AVG",t:"AVG",r:r=>(r.st.AVG??0).toFixed(3).replace(/^0/,'')},{k:"OPS",t:"OPS",r:r=>(r.st.OPS??0).toFixed(3).replace(/^0/,'')},
+ {k:"HR",t:"HR",r:r=>r.st.HR},{k:"R",t:"R",r:r=>r.st.R},{k:"RBI",t:"RBI",r:r=>r.st.RBI},{k:"SB",t:"SB",r:r=>r.st.SB},
+ {k:"ISO",t:"ISO",r:r=>(r.st.ISO??0).toFixed(3).replace(/^0/,'')},{k:"K%",t:"K%",r:r=>r.st["K%"]}
+].filter(Boolean)}
+function pitcherCols(showFt){return [
+ {k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},
+ {k:"pos",t:"Pos",r:r=>r.pos},showFt?{k:"ft",t:"Fantasy",r:r=>r.ft==="FA"?'<span class="chip fa">FA</span>':`<span class="chip">${r.ft}</span>`}:null,
+ {k:"std",t:"Szn Pts",r:r=>`<b>${r.std??'-'}</b>`},{k:"l30",t:"L30",r:r=>r.l30??'-'},
+ {k:"myros",t:"My ROS",r:r=>`<b style="color:var(--gold)">${r.myros}</b>`},{k:"projWk",t:"Proj Wk",r:r=>`<b style="color:var(--grn)">${r.projWk??'-'}</b>`},{k:"projDay",t:"Proj/Day",r:r=>r.projDay??'-'},{k:"trend",t:"Trend",r:r=>trendTxt(r.trend)},
+ {k:"tier",t:"Tier",r:r=>tierTxt(r.tier)},
+ {k:"ERA",t:"ERA",r:r=>r.st.ERA},{k:"WHIP",t:"WHIP",r:r=>r.st.WHIP},{k:"K9",t:"K/9",r:r=>r.st.K9},
+ {k:"K",t:"K",r:r=>r.st.K},{k:"W",t:"W",r:r=>r.st.W},{k:"SV",t:"SV",r:r=>r.st.SV},{k:"HD",t:"HD",r:r=>r.st.HD},
+ {k:"K/BB",t:"K/BB",r:r=>r.st["K/BB"]}
+].filter(Boolean)}
+
+/* ---- DASHBOARD ---- */
+function dash(){const me=DATA.teams.find(t=>t.code===WWT);
+ const myTop=P.filter(p=>p.ft===WWT).sort((a,b)=>b.myros-a.myros).slice(0,5);
+ let h=`<div class="cards">
+ <div class="card"><div class="acc"></div><div class="lab">Record</div><div class="big">${me.rec}</div><div class="note">4th in West · 7th of 10 · ${me.streak||''}</div></div>
+ <div class="card"><div class="acc"></div><div class="lab">Playoff Odds</div><div class="big" style="color:var(--gold)">${me.po}%</div><div class="note">Top 4 make it · 4 GB back</div></div>
+ <div class="card"><div class="acc"></div><div class="lab">Roster Rank · My ROS</div><div class="big" style="color:var(--grn)">#${me.rank}</div><div class="note">of 10 by my projections</div></div>
+ <div class="card"><div class="acc"></div><div class="lab">Points For / Against</div><div class="big">${me.pf}</div><div class="note">vs ${me.pa} against</div></div>
+ <div class="card"><div class="acc"></div><div class="lab">Proj This Week</div><div class="big" style="color:var(--grn)">${me.projWk}</div><div class="note">${me.projDay}/day · MP14 vs Reaper's</div></div>
+ </div>
+ ${DATA.movers?`<div class="sec"><span class="pip"></span>Daily Movers — ${esc(DATA.movers.date)}</div><div class="panel"><div class="two"><div><div class="lab" style="color:var(--grn);font-weight:800;margin-bottom:6px">RISING</div>${DATA.movers.up.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--line)"><span>${esc(m.n)} <span class="muted">${esc(m.t)}</span></span><b style="color:var(--grn)">+${m.d}</b></div>`).join("")||"<span class=muted>—</span>"}</div><div><div class="lab" style="color:var(--red);font-weight:800;margin-bottom:6px">FALLING</div>${DATA.movers.down.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--line)"><span>${esc(m.n)} <span class="muted">${esc(m.t)}</span></span><b style="color:var(--red)">${m.d}</b></div>`).join("")||"<span class=muted>—</span>"}</div></div><div class="lgd">${esc(DATA.movers.note||"")}</div></div>`:""}<div class="panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-color:var(--grn)"><div><b> This week — MP14 vs ${esc(DATA.matchup.opp.name)}</b><span class="muted">· projected ${DATA.matchup.me.proj}–${DATA.matchup.opp.proj} · ${DATA.matchup.winMe}% win</span></div><button class="btn sm" onclick="show('matchup')">Open full matchup →</button></div><div class="sec"><span class="pip"></span>Your Top Guns (by my rest-of-season projection)</div>
+ <div class="pgrid">${myTop.map(pcard).join("")}</div>
+ <div class="sec"><span class="pip"></span>Action Alerts</div>${DATA.alerts.map(a=>`<div class="alert a-${a[0]}"><span class="dot"></span><div>${esc(a[1])}</div></div>`).join("")}
+ <div class="two"><div><div class="sec"><span class="pip"></span>Standings</div><div class="panel" id="d-stand"></div></div>
+ <div><div class="sec"><span class="pip"></span>Next Up</div><div class="panel" id="d-sched"></div></div></div>`;
+ document.getElementById("t-dash").innerHTML=h;
+ const st=document.getElementById("d-stand");
+ const wv=t=>{const p=(t.rec||"0-0").split("-").map(Number);return p[0]+(p[2]||0)*0.5};
+ ["West","East"].forEach(dv=>{const ts=DATA.teams.filter(t=>t.div===dv).sort((a,b)=>(wv(b)-wv(a))||(b.pf-a.pf));
+ let s=`<div class="muted" style="font-weight:800;margin:4px 0">${dv}</div><table><thead><tr><th class="l">Team</th><th>Rec</th><th>Playoff%</th><th>PF</th><th>Proj</th></tr></thead><tbody>`;
+ ts.forEach(t=>s+=`<tr style="${t.code===WWT?'background:#eef7f1':''}"><td class="l">${esc(t.name)}</td><td>${t.rec}</td><td>${t.po}%</td><td>${t.pf}</td><td style="color:var(--grn)">${t.projWk}</td></tr>`);
+ st.innerHTML+=s+"</tbody></table>"});
+ let sc=`<table><thead><tr><th>MP</th><th class="l">Opponent</th><th>Tier</th><th>Priority</th></tr></thead><tbody>`;
+ DATA.schedule.slice(0,6).forEach(m=>{const c=m[2]==="Easy"?"var(--grn)":m[2]==="Hard"?"var(--red)":"var(--gold)";
+ sc+=`<tr><td>${m[0]}</td><td class="l">${esc(m[1])}</td><td style="color:${c};font-weight:800">${m[2]}</td><td>${m[3]==="MUST-WIN"?'<b style="color:var(--grn)">MUST-WIN</b>':m[3]}</td></tr>`});
+ document.getElementById("d-sched").innerHTML=sc+"</tbody></table>";
+}
+function pcard(p){return `<div class="pc" onclick="openP('${p.id}')"><div class="top"><img class="ph2" src="${photo(p.id)}" onerror="this.style.opacity=0">
+ <div><div class="nm pn" data-id="${p.id}">${esc(p.name)} ${injTxt(p.inj)}</div><div class="meta">${esc(p.pos)} · ${p.mlb} · ${trendTxt(p.trend)}</div></div></div>
+ <div class="stats"><div class="stat"><b>${p.std??'-'}</b><span>Szn</span></div><div class="stat"><b style="color:var(--gold)">${p.myros}</b><span>My ROS</span></div>
+ <div class="stat"><b style="color:var(--grn)">${p.projWk??'-'}</b><span>Proj Wk</span></div>
+ <div class="stat"><b>${p.l30??'-'}</b><span>L30</span></div><div class="stat">${tierTxt(p.tier)}<span style="display:block;margin-top:3px">Tier</span></div></div></div>`}
+
+/* ---- MY TEAM ---- */
+function team(){const H=P.filter(p=>p.ft===WWT&&p.type==="H").sort((a,b)=>b.myros-a.myros);
+ const Pi=P.filter(p=>p.ft===WWT&&p.type==="P").sort((a,b)=>b.myros-a.myros);
+ document.getElementById("t-team").innerHTML=`<div class="panel"><b>The read:</b> by my in-season projections you own a top-5 roster but sit 7th at 6-7 — you've won two straight (W2) and the 4th playoff seed is just 4 games back. It's an output gap, not a talent gap. Tap any player for full stats &amp; advanced metrics. <b>My ROS</b> is my rest-of-season points projection (built from season pace + recent form — no preseason guesses). <b>Season Pts</b> is what they've actually banked.</div>
+ <div class="sec"><span class="pip"></span>Hitters</div><div class="pgrid">${H.map(pcard).join("")}</div>
+ <div class="sec"><span class="pip"></span>Pitchers</div><div class="pgrid">${Pi.map(pcard).join("")}</div>`;
+}
+
+/* ---- PLAYER UNIVERSE ---- */
+let pType="H";
+function players(){
+ const fts=[...new Set(P.map(p=>p.ft))].filter(x=>x!=="FA").sort();
+ const mlbs=[...new Set(P.map(p=>p.mlb))].sort();
+ const posH=["C","1B","2B","3B","SS","OF","DH"],posP=["SP","RP"];
+ document.getElementById("t-players").innerHTML=`
+ <div class="seg" style="margin-bottom:14px"><button id="suU" class="on" onclick="puShow('U')"> Player Universe</button><button id="suA" onclick="puShow('A')"> Projection Accuracy</button></div>
+ <div id="pu-accuracy" style="display:none"></div>
+ <div id="pu-universe">
+ <div class="controls">
+ <div class="seg"><button id="bh" class="${pType==='H'?'on':''}">Hitters</button><button id="bp" class="${pType==='P'?'on':''}">Pitchers</button></div>
+ <input id="q" placeholder="Search player…" style="min-width:180px">
+ <select id="fown"><option value="">All managers</option><option value="FA">Free Agents only</option><option value="ROST">Rostered only</option>${fts.map(c=>`<option value="${c}">${esc(TN[c]||c)}</option>`).join("")}</select>
+ <select id="fmlb"><option value="">All MLB teams</option>${mlbs.map(m=>`<option>${m}</option>`).join("")}</select>
+ <select id="fpos"><option value="">All positions</option></select>
+ <select id="fsort"><option value="myros">Sort: My ROS</option><option value="std">Sort: Season Pts</option><option value="l30">Sort: Last 30</option></select>
+ <span class="pill2" id="cnt"></span>
+ </div><div id="ptbl"></div>
+ <div class="lgd">Click a row for the full profile.</div></div>`;
+ const fpos=document.getElementById("fpos");
+ fpos.innerHTML=`<option value="">All positions</option>`+(pType==="H"?posH:posP).map(x=>`<option>${x}</option>`).join("");
+ document.getElementById("bh").onclick=()=>{pType="H";players()};
+ document.getElementById("bp").onclick=()=>{pType="P";players()};
+ const draw=()=>{const q=(document.getElementById("q").value||"").toLowerCase();
+ const fo=document.getElementById("fown").value,fm=document.getElementById("fmlb").value,fp=document.getElementById("fpos").value,fs=document.getElementById("fsort").value;
+ let rows=P.filter(p=>p.type===pType).filter(p=>!q||p.name.toLowerCase().includes(q))
+ .filter(p=>!fm||p.mlb===fm).filter(p=>!fp||p.pos.split("/").includes(fp))
+ .filter(p=>fo===""?true:fo==="FA"?p.ft==="FA":fo==="ROST"?p.ft!=="FA":p.ft===fo);
+ document.getElementById("cnt").textContent=rows.length+" players";
+ const c=document.getElementById("ptbl");c.innerHTML="";
+ c.appendChild(tableEl(rows,(pType==="H"?hitterCols(true):pitcherCols(true)),fs));
+ };
+ ["q","fown","fmlb","fpos","fsort"].forEach(id=>{const e=document.getElementById(id);e.oninput=draw;e.onchange=draw});
+ draw();
+}
+
+/* ---- TRADE BOT ---- */
+let give=[],get=[];
+function tradeEval(){const out=document.getElementById("tout");
+ if(!give.length&&!get.length){out.innerHTML='<div class="muted">Add players to both sides (or load a suggestion) to grade a trade.</div>';return}
+ const gM=give.reduce((a,n)=>a+(byName(n)?.myros||0),0),tM=get.reduce((a,n)=>a+(byName(n)?.myros||0),0);
+ const d=tM-gM;let v,c;
+ if(Math.abs(d)<=20){v="FAIR DEAL";c="var(--blu)"}else if(d>60){v="YOU WIN BIG";c="var(--grn)"}
+ else if(d>20){v="YOU WIN";c="var(--grn)"}else if(d<-60){v="DON'T DO IT";c="var(--red)"}else{v="YOU LOSE VALUE";c="var(--org)"}
+ const reasons=[`Value: you ${d>=0?'gain':'give up'} <b style="color:${d>=0?'var(--grn)':'var(--red)'}">${Math.abs(d)}</b> projected ROS points (${tM} in vs ${gM} out).`];
+ const getP=get.filter(n=>byName(n)?.type==="P").length, get3B=get.filter(n=>(byName(n)?.pos||"").includes("3B")).length;
+ const getSV=get.filter(n=>{const p=byName(n);return p&&p.type==="P"&&(p.st.SV>=8||p.st.HD>=8)}).length;
+ const giveOF=give.filter(n=>(byName(n)?.pos||"").includes("OF")).length;
+ if(getP)reasons.push("Fit ✓: adding pitching — innings + Ks are your top points lever (7 P slots).");
+ if(getSV)reasons.push("Fit ✓: acquiring a late-inning arm (saves/holds) — high-floor points.");
+ if(get3B)reasons.push("Fit ✓: 3B/IF depth behind Brooks Lee.");
+ if(giveOF)reasons.push("Fit ✓: dealing from your OF/UTIL surplus.");
+ if(give.some(n=>["Logan Gilbert","Shohei Ohtani","James Wood","Pete Alonso","CJ Abrams","Brice Turang","George Kirby"].includes(n)))
+ reasons.push("⚠ You're giving up a core piece — only do it for a clear multi-week upgrade.");
+ const gp=gM+tM?Math.round(gM/(gM+tM)*100):50;
+ out.innerHTML=`<div class="verdict" style="color:${c}">${v}</div><div class="bar"><div class="g" style="width:${100-gp}%"></div><div class="r" style="width:${gp}%"></div></div>
+ <div class="lgd">left = value you receive · right = value you give</div><ul class="tt">${reasons.map(r=>`<li>${r}</li>`).join("")}</ul>`;
+}
+const byName=n=>P.find(p=>p.name===n);
+function tk(n,side){const p=byName(n);return `<span class="tk">${p?ph(p.id):""}<b>${esc(n)}</b><span class="muted">${p?p.myros:""}</span><span class="x" data-n="${esc(n)}" data-s="${side}">✕</span></span>`}
+function chips(){document.getElementById("gchips").innerHTML=give.map(n=>tk(n,"g")).join("")||'<span class="muted">add players…</span>';
+ document.getElementById("tchips").innerHTML=get.map(n=>tk(n,"t")).join("")||'<span class="muted">add players…</span>';
+ document.querySelectorAll(".tk .x").forEach(x=>x.onclick=()=>{const n=x.dataset.n;if(x.dataset.s==="g")give=give.filter(a=>a!==n);else get=get.filter(a=>a!==n);chips();tradeEval()});tradeEval()}
+function trade(){const mine=P.filter(p=>p.ft===WWT).sort((a,b)=>a.name.localeCompare(b.name));
+ const others=P.filter(p=>p.ft!==WWT).sort((a,b)=>a.name.localeCompare(b.name));
+ document.getElementById("t-trade").innerHTML=`<div class="panel"><b> Trade Bot.</b> Build any trade across the whole league and I grade it on my in-season projected value <i>and</i> fit (you want pitching innings; you have OF/UTIL surplus). Two closers already cover saves.</div>
+ <div class="two">
+ <div class="card"><div class="lab">You give — Will's Wild Team</div><div class="acc"></div>
+ <select id="gsel"><option value="">+ add player…</option>${mine.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} (${p.pos}, ROS ${p.myros})</option>`).join("")}</select>
+ <div class="chiprow" id="gchips"></div></div>
+ <div class="card"><div class="lab">You get — any team / free agent</div><div class="acc"></div>
+ <select id="tsel"><option value="">+ add player…</option>${others.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} — ${p.ft==="FA"?"FA":p.ft} (${p.pos}, ROS ${p.myros})</option>`).join("")}</select>
+ <div class="chiprow" id="tchips"></div></div>
+ </div>
+ <div class="panel" id="tout" style="margin-top:14px"></div>
+ <div class="sec"><span class="pip"></span> Suggested deals (surplus as the chip)</div><div id="sg"></div>
+ <div class="sec"><span class="pip"></span>The Troll (your brother) offer</div><div class="panel" id="troll"></div>`;
+ document.getElementById("gsel").onchange=e=>{if(e.target.value&&!give.includes(e.target.value))give.push(e.target.value);e.target.value="";chips()};
+ document.getElementById("tsel").onchange=e=>{if(e.target.value&&!get.includes(e.target.value))get.push(e.target.value);e.target.value="";chips()};
+ document.getElementById("sg").innerHTML=DATA.tradeIdeas.map((d,i)=>`<div class="sugg"><b>Give:</b> ${d[0].join(" + ")} &nbsp;→&nbsp; <b>Get:</b> ${d[1].join(" + ")} <span class="muted">· vs ${esc(d[2])}</span>
+ <div class="muted" style="margin:6px 0">${esc(d[3])}</div><button class="btn sm" data-i="${i}">Load into calculator ↑</button></div>`).join("");
+ document.querySelectorAll("#sg button[data-i]").forEach(b=>b.onclick=()=>{const d=DATA.tradeIdeas[b.dataset.i];give=d[0].slice();get=d[1].slice();chips();scrollTo(0,0)});
+ const td=DATA.trollDeal;document.getElementById("troll").innerHTML=`<b>${esc(td.title)}</b><div class="verdict" style="color:var(--red);font-size:17px;margin:6px 0">${esc(td.verdict)}</div>
+ <ul class="tt">${td.counters.map(c=>`<li>${esc(c)}</li>`).join("")}</ul><button class="btn sm" id="lt">Load his offer ↑</button>`;
+ document.getElementById("lt").onclick=()=>{give=["Logan Gilbert","Hunter Greene"];get=["Jordan Walker"];chips();scrollTo(0,0)};
+ chips();
+}
+
+/* ---- STRATEGY ---- */
+function strategy(){let h=`<div class="panel"><b>Plan in one line:</b> 6-7 and climbing (W2), 4 back of the 4th seed. Stream pitching innings, bank the soft spots (Reaper's MP14, Tennis Racket MP17), and target 9-1 down the stretch to steal a wild-card spot.</div>
+ <div class="sec"><span class="pip"></span>Action Plan</div><div class="cards">`;
+ Object.entries(DATA.actionPlan).forEach(([k,v])=>h+=`<div class="card"><div class="acc"></div><div class="lab">${k}</div><ul class="tt">${v.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></div>`);
+ h+=`</div><div class="sec"><span class="pip"></span>Rest-of-Season Schedule</div><div class="panel"><table><thead><tr><th>MP</th><th class="l">Opponent</th><th>Win Tier</th><th>Priority</th></tr></thead><tbody>`;
+ DATA.schedule.forEach(m=>{const c=m[2]==="Easy"?"var(--grn)":m[2]==="Hard"?"var(--red)":"var(--gold)";
+ h+=`<tr><td>${m[0]}</td><td class="l">${esc(m[1])}</td><td style="color:${c};font-weight:800">${m[2]}</td><td>${m[3]==="MUST-WIN"?'<b style="color:var(--grn)">MUST-WIN</b>':m[3]}</td></tr>`});
+ h+=`</tbody></table></div>
+ <div class="sec"><span class="pip"></span>How the numbers work (be skeptical — here's the method)</div>
+ <div class="panel"><ul class="tt">
+ <li><b>Real MLB data.</b> Every stat is your league's real-life 2026 box-score production, pulled live from ESPN.</li>
+ <li><b>My ROS projection</b> = season pace (45%) + last-30 form (35%) + last-15 form (20%), scaled to games left. No preseason projections — only what players are actually doing now.</li>
+ <li><b>Season Pts</b> = points actually banked this year. <b>Trend</b> compares recent pace to season pace (hot/cold).</li>
+ <li><b>Advanced metrics</b> (ISO, OBP/SLG/OPS, BB%, K%, K/9, K/BB, WHIP) are derived from the real box-score stats. Pitch-level Statcast (barrels, xwOBA, EV) isn't bulk-accessible through these tools, so it isn't shown — everything here is real and verifiable.</li>
+ <li><b>Scoring:</b> H2H Points — hitters R/TB/RBI/BB/SB +1, K −1; pitchers IP×3, K +1, W +2, SV +5, HD +2, H −1, BB −1, ER −2, L −2.</li>
+ </ul></div>`;
+ document.getElementById("t-strategy").innerHTML=h;
+}
+
+/* ---- WAIVER HUB ---- */
+function waiver(){
+ const il60=i=>i&&/SIXTY/.test(i);
+ const fa=P.filter(p=>p.ft==="WAIVERPLACE"||p.ft==="FA").filter(p=>!il60(p.inj));
+ const wkPace=p=>{const r=(p.l15!=null?p.l15/15:(p.l30!=null?p.l30/30:0));return Math.round(r*7);};
+ fa.forEach(p=>p._wk=wkPace(p));
+ const faH=fa.filter(p=>p.type==="H"), faP=fa.filter(p=>p.type==="P");
+ const isSP=p=>(p.pos||"").includes("SP")||(p.pos==="P");
+ const el=document.getElementById("t-trade");
+ el.innerHTML=`
+ <div class="panel"><b>Waiver wire.</b> Free agents ranked by my numbers. <b>Year</b> = rest-of-season value; <b>Week</b> = recent pace. Priority is startable, ideally two-start, pitching.</div>
+
+ <div class="sec"><span class="pip"></span> Best for the REST OF THE YEAR (hold these)</div>
+ <div class="controls"><span class="lgd">Filter:</span>
+ <select id="wpos"><option value="">All positions</option><option>SP</option><option>RP</option><option>C</option><option>1B</option><option>2B</option><option>3B</option><option>SS</option><option>OF</option></select>
+ <span class="lgd">Ranked by my rest-of-season projection (MyROS).</span></div>
+ <div id="w-ros"></div>
+
+ <div class="sec"><span class="pip"></span> Best for THIS WEEK — Hitters (hot bats to stream)</div>
+ <div id="w-wkH"></div>
+ <div class="sec"><span class="pip"></span> Best for THIS WEEK — Starting Pitchers</div>
+ <div class="lgd" style="margin:0 0 8px">Ranked by recent form + ratios. = confirmed <b>TWO starts</b> this week (from live ESPN probables) — a 2-start arm nearly doubles the points.</div>
+ <div id="w-wkP"></div>
+
+ <div class="sec"><span class="pip"></span> TWO-START PITCHERS THIS WEEK (live ESPN probables)</div>
+ <div class="panel" id="w-2start">${(DATA.weekStarts&&DATA.weekStarts.list?`<div class="lgd" style="margin:0 0 8px">Week of ${DATA.weekStarts.week}. <b>FA</b> = free agent you can stream. Bold = on your roster.</div><table style="width:100%"><thead><tr><th class="l">Pitcher</th><th>Tm</th><th>FA?</th><th class="l">Start 1</th><th class="l">Start 2</th></tr></thead><tbody>${DATA.weekStarts.list.map(r=>`<tr><td class="l" style="${r.mine?'font-weight:800;color:var(--gold)':''}">${r.name}</td><td><span class="chip">${r.tm}</span></td><td>${r.fa?'<span class="tag fa">FA</span>':''}</td><td class="l">${r.s1}</td><td class="l">${r.s2}</td></tr>`).join("")}</tbody></table>`:`<span class="lgd">Probable schedule will populate after the morning refresh.</span>`)}</div>
+
+ <div class="sec"><span class="pip"></span> TODAY'S risers (just heating up — last 7 days)</div>
+ <div id="w-today"></div>
+
+ <div class="sec"><span class="pip"></span> Saves & Holds board (bullpen luxury adds)</div>
+ <div id="w-rp"></div>
+
+ <div class="sec"><span class="pip"></span> How to work the wire</div>
+ <div class="panel"><ul class="tt">
+ <li><b>Win-now priority:</b> spend adds on <b>startable SP</b> first (your weak 7th P slot), then bullpen. You already start a strong nine hitters — don't add bats you can't play.</li>
+ <li><b>Year vs Week:</b> grab a high-MyROS arm if you can roster it all season; otherwise stream the top "This Week" SP for the matchup, then drop for the next 2-start guy.</li>
+ <li><b>2-start weeks:</b> the single biggest weekly edge in points leagues — verify on ESPN probables, target arms in pitcher-friendly parks, avoid Coors and the highest-scoring lineups.</li>
+ <li><b>Drops to open spots:</b> cut a cold back-end arm; <b>Sean Burke</b> (FA, two starts this week) is the best streamer to add. Note: Gage Jump has gotten hot (L30 75) and has two starts — he's a <i>start</i> this week, not a drop. Keep hot Springer.</li>
+ <li><b>Timing:</b> re-check this page Mon &amp; Fri (it refreshes daily at 6 AM). Use FAAB/waiver priority on year-long arms; use free adds on weekly streamers.</li>
+ </ul></div>`;
+
+ const C={
+ ros:[{k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},{k:"pos",t:"Pos",r:r=>r.pos},
+ {k:"std",t:"Szn",r:r=>r.std},{k:"l30",t:"L30",r:r=>r.l30==null?'-':r.l30},{k:"myros",t:"MyROS·Yr",r:r=>`<b style="color:var(--gold)">${r.myros}</b>`},
+ {k:"trend",t:"Trend",r:r=>trendTxt(r.trend)},{k:"tier",t:"Tier",r:r=>tierTxt(r.tier)}],
+ wkH:[{k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},{k:"pos",t:"Pos",r:r=>r.pos},
+ {k:"_wk",t:"Wk Pace",r:r=>`<b style="color:var(--grn)">${r._wk}</b>`},{k:"l7",t:"L7",r:r=>r.l7==null?'-':r.l7},{k:"l15",t:"L15",r:r=>r.l15==null?'-':r.l15},
+ {k:"myros",t:"Yr",r:r=>r.myros},{k:"trend",t:"Trend",r:r=>trendTxt(r.trend)},{k:"AVG",t:"AVG",r:r=>(r.st.AVG??0).toFixed(3).replace(/^0/,'')},{k:"HR",t:"HR",r:r=>r.st.HR},{k:"SB",t:"SB",r:r=>r.st.SB}],
+ wkP:[{k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},
+ {k:"_wk",t:"Wk Pace",r:r=>`<b style="color:var(--grn)">${r._wk}</b>`},{k:"l15",t:"L15",r:r=>r.l15==null?'-':r.l15},{k:"myros",t:"Yr",r:r=>r.myros},
+ {k:"trend",t:"Trend",r:r=>trendTxt(r.trend)},{k:"ERA",t:"ERA",r:r=>r.st.ERA},{k:"WHIP",t:"WHIP",r:r=>r.st.WHIP},{k:"K9",t:"K/9",r:r=>r.st.K9},{k:"K",t:"K",r:r=>r.st.K}],
+ today:[{k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},{k:"pos",t:"Pos",r:r=>r.pos},
+ {k:"l7",t:"L7",r:r=>`<b style="color:var(--org)">${r.l7==null?'-':r.l7}</b>`},{k:"l15",t:"L15",r:r=>r.l15==null?'-':r.l15},{k:"myros",t:"Yr",r:r=>r.myros},{k:"trend",t:"Trend",r:r=>trendTxt(r.trend)}],
+ rp:[{k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},
+ {k:"SV",t:"SV",r:r=>`<b>${r.st.SV}</b>`},{k:"HD",t:"HD",r:r=>r.st.HD},{k:"ERA",t:"ERA",r:r=>r.st.ERA},{k:"WHIP",t:"WHIP",r:r=>r.st.WHIP},{k:"K9",t:"K/9",r:r=>r.st.K9},{k:"myros",t:"Yr",r:r=>r.myros}]
+ };
+ function fill(id,rows,cols,sort){const c=document.getElementById(id);c.innerHTML="";c.appendChild(tableEl(rows,cols,sort));}
+ const drawRos=()=>{const f=document.getElementById("wpos").value;
+ let rows=fa.filter(p=>!f||(p.pos||"").split("/").includes(f)||(f==="SP"&&isSP(p))||(f==="RP"&&p.type==="P"&&(p.pos||"").includes("RP")));
+ fill("w-ros",rows.slice().sort((a,b)=>b.myros-a.myros).slice(0,30),C.ros,"myros");};
+ document.getElementById("wpos").onchange=drawRos; drawRos();
+ fill("w-wkH",faH.slice().sort((a,b)=>b._wk-a._wk).slice(0,15),C.wkH,"_wk");
+ fill("w-wkP",faP.filter(isSP).slice().sort((a,b)=>b._wk-a._wk).slice(0,15),C.wkP,"_wk");
+ fill("w-today",fa.filter(p=>p.l7!=null).slice().sort((a,b)=>(b.l7||0)-(a.l7||0)).slice(0,12),C.today,"l7");
+ fill("w-rp",faP.filter(p=>(p.st.SV||0)>=1||(p.st.HD||0)>=4).slice().sort((a,b)=>((b.st.SV||0)*5+(b.st.HD||0)*2)-((a.st.SV||0)*5+(a.st.HD||0)*2)).slice(0,15),C.rp,"SV");
+}
+ /* ---- MATCHUP (MP H2H) ---- */
+function startBadge(p){
+ if(p.starts>=2) return `<span class="tag" style="background:#e4f3ea;color:var(--grn)"> 2 starts${p.days&&p.days.length?` · ${p.days.join(" & ")}`:""}</span>`;
+ if(p.starts===1) return `<span class="tag" style="background:#e6effb;color:var(--blu)">1 start${p.days&&p.days.length?` · ${p.days[0]}`:""}</span>`;
+ if(p.starts===0) return `<span class="chip">RP</span>`;
+ return "";
+}
+function raceSVG(R,meName,opName){
+ const W=720,H=240,L=44,Rg=14,T=18,B=42;
+ const n=R.days.length, mx=Math.max(...R.meCum,...R.oppCum,1);
+ const x=i=>L+(W-L-Rg)*(i/(n-1)), y=v=>T+(H-T-B)*(1-v/mx);
+ const line=(arr,col)=>{
+ let d=arr.map((v,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+ let dots=arr.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${col}"/>`).join("");
+ return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>${dots}`;
+ };
+ let grid="";for(let g=0;g<=4;g++){const yy=T+(H-T-B)*(g/4);grid+=`<line x1="${L}" y1="${yy}" x2="${W-Rg}" y2="${yy}" stroke="#e2e5ea" stroke-width="1"/>`;}
+ let lbls=R.days.map((d,i)=>`<text x="${x(i)}" y="${H-22}" fill="var(--mut)" font-size="11" text-anchor="middle">${d}</text>`).join("");
+ const endMe=R.meCum[n-1], endOp=R.oppCum[n-1];
+ return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${grid}
+ ${line(R.oppCum,"#d50a0a")}${line(R.meCum,"#1a8a3f")}
+ <text x="${x(n-1)-4}" y="${y(endMe)-8}" fill="#1a8a3f" font-size="12" font-weight="800" text-anchor="end">YOU ${endMe}</text>
+ <text x="${x(n-1)-4}" y="${y(endOp)+16}" fill="#d50a0a" font-size="12" font-weight="800" text-anchor="end">OPP ${endOp}</text>
+ ${lbls}
+ <text x="${L-8}" y="${T+6}" fill="var(--mut)" font-size="10" text-anchor="end">${mx}</text>
+ <text x="${L-8}" y="${H-B}" fill="var(--mut)" font-size="10" text-anchor="end">0</text></svg>`;
+}
+function pStaff(team,gold){
+ return `<div class="card"><div class="lab" style="color:${gold?'var(--gold)':'var(--mut)'}">${esc(team.name)} — Pitching</div><div class="acc"></div>
+ ${team.pitchers.map(p=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)">
+ <img class="ph" src="${photo(p.id)}" onerror="this.style.opacity=0"><div style="flex:1"><div style="font-weight:700"><span class="pn" data-id="${p.id}">${esc(p.name)}</span><span class="muted" style="font-weight:400">${p.mlb}</span></div><div>${startBadge(p)}</div></div>
+ <div style="text-align:right"><b style="color:var(--gold);font-size:16px">${p.projWk}</b><div class="lab">proj wk</div></div></div>`).join("")}
+ <div style="text-align:right;margin-top:8px;font-weight:900">Staff total: <span style="color:var(--gold)">${team.pit}</span></div></div>`;
+}
+function hud(){
+ const me=DATA.teams.find(t=>t.code===WWT), M=DATA.matchup;
+ const tiles=[
+ ["Record",`${me.rec}${me.streak?' · '+me.streak:''}`],
+ ["Playoff Odds",`${me.po}%`],
+ ["This Week",`vs ${M.opp.name}`],
+ ["Projected",`${M.me.proj}\u2013${M.opp.proj}`],
+ ["Win Prob",`${M.winMe}%`],
+ ["Points For",me.pf],
+ ["ROS Rank",`#${me.rank} / 10`]
+ ];
+ document.getElementById("hud").innerHTML=tiles.map(([k,v])=>`<div class="hud-tile"><div class="k">${k}</div><div class="v">${esc(String(v))}</div></div>`).join("");
+}
+function benchCard(t,you){
+ const out=s=>/dl|out|day/i.test(s);
+ return `<div class="card"><div class="lab" style="color:${you?'var(--gold)':'var(--mut)'}">${esc(t.name)} — Bench & swaps</div><div class="acc"></div>
+ ${(t.bench&&t.bench.length)?t.bench.map(b=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line)">
+ <img class="ph" src="${photo(b.id)}" onerror="this.style.opacity=0">
+ <div style="flex:1"><div style="font-weight:700"><span class="pn" data-id="${b.id}">${esc(b.name)}</span><span class="muted" style="font-weight:400">${esc(b.pos)} · ${b.mlb}</span></div>
+ <div><span class="chip" style="${out(b.status)?'background:#fdeef0;color:var(--red)':'background:#e4f3ea;color:var(--grn)'}">${esc(b.status)}</span></div></div>
+ <div style="text-align:right"><b style="color:${out(b.status)?'var(--mut)':'var(--grn)'}">${b.projWk}</b><div class="lab">proj wk</div></div></div>`).join(""):'<div class="muted">— no bench depth —</div>'}
+ <div class="lgd">Daily league: rotate bench bats in for resting/cold starters; stream arms into open P slots.</div></div>`;
+}
+/* ---- matchup day-by-day head to head ---- */
+let mxDay=-1;
+function mxName(p){if(!p)return '';
+ const nm=p.id?`<span class="pn" data-id="${p.id}">${esc(p.name)}</span>`:`<span class="muted">${esc(p.name)}</span>`;
+ return `${nm} <span class="muted" style="font-size:11px">${p.mlb||''}</span>`;}
+function mxFmt(v){if(v==null)return '-';return (Math.abs(v%1)<0.05)?String(Math.round(v)):v.toFixed(1);}
+function pdays(p){return p&&p.starts>=1&&p.days&&p.days.length?` <span class="chip">${p.days.join('/')}</span>`:'';}
+function compBlock(M){
+ const dr=M.dayRace,at=M.actualTeam;
+ const row=(lab,proj,act)=>`<tr><td class="l">${lab}</td><td style="color:var(--teal);font-weight:800">${proj}</td><td>${act==null?'<span class="muted">—</span>':'<b>'+act+'</b>'}</td><td style="color:${act==null?'var(--mut)':(act-proj>=0?'var(--grn)':'var(--red)')}">${act==null?'—':((act-proj>=0?'+':'')+Math.round(act-proj))}</td></tr>`;
+ let body;
+ if(mxDay<0){
+ const pm=Math.round(dr.meDaily.reduce((a,b)=>a+b,0)),po=Math.round(dr.oppDaily.reduce((a,b)=>a+b,0));
+ const hasM=at.me.some(x=>x!=null),hasO=at.opp.some(x=>x!=null);
+ const am=hasM?Math.round(at.me.reduce((a,b)=>a+(b||0),0)):null,ao=hasO?Math.round(at.opp.reduce((a,b)=>a+(b||0),0)):null;
+ const pl=[];for(let i=0;i<7;i++)if(at.me[i]!=null)pl.push(i);
+ const ptm=Math.round(pl.reduce((s,i)=>s+dr.meDaily[i],0)),atm=Math.round(pl.reduce((s,i)=>s+(at.me[i]||0),0));
+ const pto=Math.round(pl.reduce((s,i)=>s+dr.oppDaily[i],0)),ato=Math.round(pl.reduce((s,i)=>s+(at.opp[i]||0),0));
+ body=`<tr class="mx-sec"><td colspan="4">Full week (Claude proj total vs actual so far)</td></tr>${row(esc(M.me.name),pm,am)}${row(esc(M.opp.name),po,ao)}`+
+ (pl.length?`<tr class="mx-sec"><td colspan="4">Through ${dr.days[pl[pl.length-1]]} — apples-to-apples (proj for played days only)</td></tr>${row(esc(M.me.name),ptm,atm)}${row(esc(M.opp.name),pto,ato)}`:`<tr><td colspan="4" class="muted" style="text-align:center">Actuals fill in as games finalize</td></tr>`);
+ } else {
+ body=`${row(esc(M.me.name),Math.round(dr.meDaily[mxDay]),at.me[mxDay]==null?null:Math.round(at.me[mxDay]))}${row(esc(M.opp.name),Math.round(dr.oppDaily[mxDay]),at.opp[mxDay]==null?null:Math.round(at.opp[mxDay]))}`;
+ }
+ return `<div class="panel" style="margin-top:12px"><div class="sec" style="margin:0 0 10px"><span class="pip"></span>Claude Proj vs ESPN Actual</div><div class="tbl"><table><thead><tr><th class="l">Team</th><th>Claude Proj</th><th>ESPN Actual</th><th>Diff</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+function mxRender(){
+ const M=DATA.matchup,me=M.me,op=M.opp,days=M.dayRace.days,live=M.hasActuals;
+ const cell=p=>{if(!p)return{v:0,actual:false};
+ if(mxDay<0){if(p.actual&&p.daily){let v=0,any=false;for(let i=0;i<7;i++){if(p.actual[i]!=null){v+=p.actual[i];any=true;}else v+=(p.daily[i]||0);}return{v:Math.round(v*10)/10,actual:any};}return{v:p.projWk,actual:false};}
+ const a=(p.actual&&p.actual[mxDay]!=null);return{v:a?p.actual[mxDay]:(p.daily?p.daily[mxDay]:0),actual:a};};
+ const tot=t=>Math.round([...t.hitters,...t.pitchers].reduce((s,p)=>s+cell(p).v,0));
+ const lab=mxDay<0?"Full Week":days[mxDay];
+ document.getElementById("mxnav").innerHTML=
+ `<button class="${mxDay<0?'on':''}" onclick="mxDay=-1;mxRender()">Full Week</button>`+
+ days.map((d,i)=>`<button class="${mxDay===i?'on':''}" onclick="mxDay=${i};mxRender()">${d}</button>`).join("");
+ const hrows=me.hitters.map((h,i)=>{const o=op.hitters[i],hc=cell(h),oc=cell(o);
+ return `<tr><td class="mx-me"><span class="mx-pt ${hc.v>=oc.v&&hc.v>0?'win':''} ${hc.actual?'act':''}">${mxFmt(hc.v)}</span>${mxName(h)}</td>
+ <td class="mx-slot">${h.slot}</td>
+ <td class="mx-op">${mxName(o)}<span class="mx-pt ${oc.v>hc.v&&oc.v>0?'win':''} ${oc.actual?'act':''}">${mxFmt(oc.v)}</span></td></tr>`;}).join("");
+ const act=t=>t.pitchers.filter(p=>mxDay<0||cell(p).v>0).sort((a,b)=>cell(b).v-cell(a).v);
+ const mps=act(me),ops=act(op),n=Math.max(mps.length,ops.length,1);
+ let prows="";for(let i=0;i<n;i++){const a=mps[i],b=ops[i];
+ prows+=`<tr><td class="mx-me">${a?`<span class="mx-pt ${cell(a).actual?'act':''}">${mxFmt(cell(a).v)}</span>`+mxName(a)+pdays(a):'<span class="muted">—</span>'}</td>
+ <td class="mx-slot">P</td>
+ <td class="mx-op">${b?mxName(b)+pdays(b)+`<span class="mx-pt ${cell(b).actual?'act':''}">${mxFmt(cell(b).v)}</span>`:'<span class="muted">—</span>'}</td></tr>`;}
+ const mtot=tot(me),otot=tot(op);
+ document.getElementById("mxbody").innerHTML=`
+ <div class="mx-scoreboard">
+ <div class="mx-team"><div class="mx-nm">${esc(me.name)}</div><div class="mx-tot">${mtot}</div></div>
+ <div class="mx-mid">${lab}<div class="mx-sub">${live?'live':'projected'}</div></div>
+ <div class="mx-team r"><div class="mx-nm">${esc(op.name)}</div><div class="mx-tot">${otot}</div></div></div>
+ <div class="tbl"><table class="mxtbl"><tbody>
+ <tr class="mx-sec"><td colspan="3">Hitters</td></tr>${hrows}
+ <tr class="mx-sec"><td colspan="3">Pitchers ${mxDay<0?'(week)':'— '+lab}</td></tr>${prows}
+ <tr class="mx-total"><td class="mx-me"><b>${mtot}</b> total</td><td class="mx-slot">${mxDay<0?'WEEK':lab.toUpperCase()}</td><td class="mx-op">total <b>${otot}</b></td></tr>
+ </tbody></table></div>${compBlock(M)}
+ <div class="lgd">${live?'Solid glowing numbers = <b>actual</b> points scored; plain = projection for games not yet final.':'Showing <b>projected</b> points — each flips to <b>actual</b> points as that day of games finalizes (daily 6 AM refresh). Bottom row is the running weekly total.'}</div>`;
+}
+function puShow(w){const u=document.getElementById("pu-universe"),a=document.getElementById("pu-accuracy");
+ u.style.display=w==='U'?'':'none';a.style.display=w==='A'?'':'none';
+ document.getElementById("suU").classList.toggle("on",w==='U');document.getElementById("suA").classList.toggle("on",w==='A');
+ if(w==='A')accuracyPanel();}
+function accuracyPanel(){const A=DATA.accuracy;
+ document.getElementById("pu-accuracy").innerHTML=`<div class="panel"><b>Projection accuracy.</b> ${esc(A.note)}</div>
+ <div class="cards">
+ <div class="card"><div class="lab">Model Weekly Proj</div><div class="big" style="color:var(--teal)">${A.calibration.modelWeekly}</div><div class="note">my daily-optimized projection</div></div>
+ <div class="card"><div class="lab">Your Season Avg</div><div class="big">${A.calibration.seasonAvg}</div><div class="note">actual pts/week · 13 weeks</div></div>
+ <div class="card"><div class="lab">Calibration Gap</div><div class="big" style="color:var(--org)">${A.calibration.gap>=0?'+':''}${A.calibration.gap}</div><div class="note">model targets your ceiling</div></div>
+ </div>
+ <div class="sec"><span class="pip"></span>Week-by-Week — My Projection vs ESPN Actual</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th>MP</th><th class="l">Opponent</th><th>My Proj</th><th>ESPN Actual</th><th>Error</th><th>Accuracy</th></tr></thead><tbody>
+ ${A.weekByWeek.map(w=>`<tr><td>${w.mp}</td><td class="l">${esc(w.opp)}</td><td style="color:var(--teal);font-weight:800">${w.proj}</td><td>${w.actual==null?'<span class="muted">in progress</span>':'<b>'+w.actual+'</b>'}</td><td>${w.err==null?'—':(w.err>=0?'+':'')+w.err}</td><td>${w.acc==null?'—':'<b style="color:var(--grn)">'+w.acc+'%</b>'}</td></tr>`).join("")}
+ </tbody></table></div></div>
+ <div class="sec"><span class="pip"></span>Day-by-Day — This Week (MP${A.startMP})</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th class="l">Day</th><th>My Proj</th><th>Actual</th><th>Error</th></tr></thead><tbody>
+ ${A.dayByDay.map(d=>`<tr><td class="l">${d.day}</td><td style="color:var(--teal);font-weight:800">${d.proj}</td><td>${d.actual==null?'<span class="muted">—</span>':'<b>'+d.actual+'</b>'}</td><td>${d.actual==null?'—':((d.actual-d.proj>=0?'+':'')+(d.actual-d.proj).toFixed(1))}</td></tr>`).join("")}
+ </tbody></table></div>
+ <div class="lgd">Actuals fill in automatically with the daily 6 AM refresh as each day's games finalize. Accuracy % = 100 − |error| ÷ actual. This week (MP14) is the first tracked — the log grows each week.</div></div>`;
+}
+
+function matchup(){
+ const M=DATA.matchup, me=M.me, op=M.opp;
+ const lg=[...DATA.teams].sort((a,b)=>b.projWk-a.projWk); const myRank=lg.findIndex(t=>t.code===WWT)+1;
+ const sideCard=(t,you)=>`<div class="card" style="text-align:center;${you?'border-color:var(--grn)':''}">
+ <div style="font-size:16px;font-weight:900">${esc(t.name)}</div>
+ <div class="muted" style="margin-bottom:6px">${t.rec}${you?' · <b style="color:var(--grn)">YOU</b>':''}</div>
+ <div style="font-size:42px;font-weight:900;color:var(--gold);line-height:1">${t.proj}</div>
+ <div class="lab">projected this week</div>
+ <div class="muted" style="margin-top:8px"> Hitting <b>${t.hit}</b> · Pitching <b>${t.pit}</b></div></div>`;
+ let h=`<div class="panel" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+ <div><b> Matchup Period ${M.mp}</b><span class="muted">· ${M.week} · H2H Points</span></div>
+ <div class="muted">Live score: <b>${esc(M.live)}</b></div></div>
+ <div class="two">${sideCard(me,true)}${sideCard(op,false)}</div>
+ <div class="sec"><span class="pip"></span>Win Probability</div>
+ <div class="panel"><div class="bar" style="height:28px;border-radius:9px">
+ <div class="g" style="width:${M.winMe}%;display:flex;align-items:center;justify-content:center;color:#ffffff;font-weight:900;font-size:13px">${M.winMe>12?M.winMe+"%":""}</div>
+ <div class="r" style="width:${M.winOpp}%;display:flex;align-items:center;justify-content:center;color:#ffffff;font-weight:900;font-size:13px">${M.winOpp>12?M.winOpp+"%":""}</div></div>
+ <div class="lgd">You <b style="color:var(--grn)">${M.winMe}%</b> · ${esc(op.name)} <b style="color:var(--red)">${M.winOpp}%</b> — projected margin <b>${M.margin>=0?"+":""}${M.margin}</b> pts. Model blends season pace + recent form, scaled to this week's games (pitchers weighted by confirmed starts).</div></div>
+ <div class="sec"><span class="pip"></span>The Read</div>
+ ${M.insights.map(i=>`<div class="alert a-good"><span class="dot"></span><div>${i}</div></div>`).join("")}
+ <div class="sec"><span class="pip"></span>Projected Day-by-Day Race</div>
+ <div class="panel">${raceSVG(M.dayRace,me.name,op.name)}
+ <div class="lgd">Cumulative projected points across the week.</div>
+ <div class="tbl" style="margin-top:10px"><table><thead><tr><th class="l">Projected / day</th>${M.dayRace.days.map(d=>`<th>${d}</th>`).join("")}<th>Total</th></tr></thead><tbody>
+ <tr><td class="l" style="color:var(--grn);font-weight:800">You</td>${M.dayRace.meDaily.map(v=>`<td>${v}</td>`).join("")}<td style="color:var(--gold);font-weight:900">${me.proj}</td></tr>
+ <tr><td class="l" style="color:var(--red);font-weight:800">${esc(op.name)}</td>${M.dayRace.oppDaily.map(v=>`<td>${v}</td>`).join("")}<td style="font-weight:900">${op.proj}</td></tr>
+ </tbody></table></div></div>
+ <div class="sec"><span class="pip"></span>Head-to-Head Lineups — Step Through Each Day</div><div class="daynav" id="mxnav"></div><div id="mxbody"></div><div class="sec"><span class="pip"></span>Weekly Edge — Slot by Slot</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th>Slot</th><th class="l">Your starter</th><th>Proj</th><th>Edge</th><th>Proj</th><th class="l">Their starter</th></tr></thead><tbody>
+ ${M.slotEdges.map(e=>{const mw=e.win==="me",ow=e.win==="opp";
+ return `<tr>
+ <td><b>${e.slot}</b></td>
+ <td class="l">${e.me?`<span class="pcell"><img class="ph" src="${photo(e.me.id)}" onerror="this.style.opacity=0"><span><span class="nm pn" data-id="${e.me.id}">${esc(e.me.name)}</span><span class="muted">${e.me.mlb}</span></span></span>`:"—"}</td>
+ <td style="${mw?'color:var(--grn);font-weight:800':''}">${e.me?e.me.projWk:0}</td>
+ <td>${mw?'<span style="color:var(--grn);font-weight:900">◀ YOU</span>':ow?'<span style="color:var(--red);font-weight:900">OPP ▶</span>':'<span class="muted">even</span>'}</td>
+ <td style="${ow?'color:var(--red);font-weight:800':''}">${e.opp?e.opp.projWk:0}</td>
+ <td class="l">${e.opp?`<span class="pcell"><img class="ph" src="${photo(e.opp.id)}" onerror="this.style.opacity=0"><span><span class="nm pn" data-id="${e.opp.id}">${esc(e.opp.name)}</span><span class="muted">${e.opp.mlb}</span></span></span>`:"—"}</td></tr>`;}).join("")}
+ </tbody></table></div></div>
+ <div class="sec"><span class="pip"></span>Bench &amp; Daily Swap Options</div><div class="two">${benchCard(me,true)}${benchCard(op,false)}</div><div class="sec"><span class="pip"></span>Pitching Staff & Two-Start Edge</div>
+ <div class="two">${pStaff(me,true)}${pStaff(op,false)}</div>
+ <div class="panel"><b>Two-start arms this week —</b> You: ${M.twoStartMe.map(p=>`<span class="chip" style="background:#e4f3ea;color:var(--grn)">${esc(p.name)} (${p.days.join(" & ")})</span>`).join(" ")||'<span class="muted">none</span>'} &nbsp;·&nbsp; ${esc(op.name)}: ${M.twoStartOpp.map(p=>`<span class="chip" style="background:#fdeef0;color:var(--red)">${esc(p.name)} (${p.days.join(" & ")})</span>`).join(" ")||'<span class="muted">none</span>'}
+ <div class="lgd" style="margin-top:6px">More starts = more innings, strikeouts and win/quality-start chances. This is the biggest single lever in a weekly points matchup.</div></div>`;
+
+ h+=`<div class="sec"><span class="pip"></span>Around the League — Projected Weekly Scoring</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th>#</th><th class="l">Team</th><th>Proj Wk</th><th>Proj/Day</th><th>Rec</th></tr></thead><tbody>
+ ${lg.map((t,i)=>`<tr style="${t.code===WWT?'background:#eef7f1':''}"><td>${i+1}</td><td class="l">${esc(t.name)}</td><td><b style="color:var(--gold)">${t.projWk}</b></td><td>${t.projDay}</td><td>${t.rec}</td></tr>`).join("")}
+ </tbody></table></div><div class="lgd">Your roster projects <b>#${myRank} of 10</b> in scoring this week .</div></div>`;
+ mxDay=-1;document.getElementById("t-matchup").innerHTML=h;mxRender();
+}
+
+/* ---- profile analytics helpers ---- */
+function spark(p){
+ const vals=[[p.std,85,'Szn'],[p.l30,30,'L30'],[p.l15,15,'L15'],[p.l7,7,'L7']].map(([v,d,l])=>[v!=null&&d?v/d:0,l]);
+ const mx=Math.max(...vals.map(x=>x[0]),0.1);
+ return `<div style="display:flex;gap:8px;align-items:flex-end">${vals.map(([v,l])=>
+ `<div style="flex:1;text-align:center"><div style="height:46px;display:flex;align-items:flex-end;justify-content:center"><i style="display:block;width:60%;height:${Math.max(3,Math.round(v/mx*100))}%;background:linear-gradient(180deg,var(--teal),var(--purple));border-radius:3px 3px 0 0"></i></div><div style="font-size:9px;color:var(--mut);margin-top:4px;font-weight:800">${l}</div><div style="font-size:11px;font-weight:800">${(v).toFixed(1)}</div></div>`).join("")}</div>`;
+}
+function comps(p){
+ const same=P.filter(x=>x.ppos===p.ppos&&x.id!==p.id).sort((a,b)=>Math.abs(a.myros-p.myros)-Math.abs(b.myros-p.myros)).slice(0,3);
+ return same.map(x=>`<span class="pn" data-id="${x.id}">${esc(x.name)}</span><span class="muted">(${x.myros})</span>`).join(" · ")||"—";
+}
+function profAnalytics(p){
+ const sc=p.signal==='RISING'?'var(--grn)':p.signal==='FADING'?'var(--red)':'var(--mut)';
+ return `<div class="sec"><span class="pip"></span>Analytics & Deep Dive</div>
+ <div class="mrow">
+ <div class="mstat"><b style="color:var(--teal)">#${p.posRank}<span style="font-size:11px;color:var(--mut)"> / ${p.posN}</span></b><span>${p.ppos} Rank</span></div>
+ <div class="mstat"><b style="color:${p.vorp>=0?'var(--grn)':'var(--red)'}">${p.vorp>=0?'+':''}${p.vorp}</b><span>VORP (ROS)</span></div>
+ <div class="mstat"><b>${p.consistency}<span style="font-size:11px;color:var(--mut)">/99</span></b><span>Consistency</span></div>
+ <div class="mstat"><b style="color:${sc}">${p.signal}</b><span>Momentum</span></div>
+ </div>
+ <div class="panel" style="margin:0 0 12px">
+ <div class="lgd" style="margin:0 0 8px">Scoring pace — points per day, season vs recent windows</div>
+ ${spark(p)}
+ <div class="lgd" style="margin-top:10px"><b>Comparable ${p.ppos}s:</b> ${comps(p)}</div>
+ </div>`;
+}
+/* ---- ANALYTICS TAB ---- */
+function gradeColor(g){return g[0]==='A'?'var(--grn)':g[0]==='B'?'var(--blu)':g==='C'?'var(--yellow)':'var(--red)';}
+function leadCols(type){
+ const base=[{k:"name",t:"Player",l:1,r:nmCell},{k:"mlb",t:"Tm",r:r=>`<span class="chip">${r.mlb}</span>`},{k:"pos",t:"Pos",r:r=>r.pos},
+ {k:"myros",t:"My ROS",r:r=>`<b style="color:var(--gold)">${r.myros}</b>`},{k:"projWk",t:"Proj Wk",r:r=>`<b style="color:var(--grn)">${r.projWk}</b>`},
+ {k:"vorp",t:"VORP",r:r=>`<b style="color:${r.vorp>=0?'var(--teal)':'var(--red)'}">${r.vorp>=0?'+':''}${r.vorp}</b>`},
+ {k:"consistency",t:"Cons",r:r=>r.consistency},{k:"ft",t:"Owner",r:r=>r.ft==="FA"?'<span class="chip fa">FA</span>':`<span class="chip">${r.ft}</span>`}];
+ if(type==="H") base.push({k:"OPS",t:"OPS",r:r=>(r.st.OPS??0).toFixed(3).replace(/^0/,'')},{k:"HR",t:"HR",r:r=>r.st.HR});
+ else base.push({k:"ERA",t:"ERA",r:r=>r.st.ERA},{k:"K",t:"K",r:r=>r.st.K});
+ return base;
+}
+function fill2(id,rows,cols,sk){const c=document.getElementById(id);if(c){c.innerHTML="";c.appendChild(tableEl(rows,cols,sk));}}
+let apDay=0;
+function apVal(p,day){
+ if(day<0){const proj=p.projWk;let act=null;if(p.actual&&p.actual.some(x=>x!=null)){act=0;for(let i=0;i<7;i++)act+=(p.actual[i]!=null?p.actual[i]:0);}return{proj,act};}
+ return{proj:p.daily?p.daily[day]:0,act:(p.actual&&p.actual[day]!=null)?p.actual[day]:null};
+}
+function apRender(){
+ const M=DATA.matchup,days=M.dayRace.days;
+ document.getElementById("apnav").innerHTML=`<button class="${apDay<0?'on':''}" onclick="apDay=-1;apRender()">Full Week</button>`+days.map((d,i)=>`<button class="${apDay===i?'on':''}" onclick="apDay=${i};apRender()">${d}</button>`).join("");
+ const mk=(arr,who)=>arr.filter(p=>p.id).map(p=>{const v=apVal(p,apDay);return{p,proj:v.proj,act:v.act,diff:v.act==null?null:v.act-v.proj,who};});
+ let rows=[...mk(M.me.hitters.concat(M.me.pitchers),M.me.name),...mk(M.opp.hitters.concat(M.opp.pitchers),M.opp.name)];
+ rows.sort((a,b)=>((b.act!=null?b.act:b.proj))-((a.act!=null?a.act:a.proj)));
+ document.getElementById("apbody").innerHTML=`<div class="panel"><div class="tbl"><table><thead><tr><th class="l">Player</th><th>Team</th><th>Pos</th><th>Claude Proj</th><th>ESPN Actual</th><th>Diff</th></tr></thead><tbody>
+ ${rows.map(r=>`<tr><td class="l"><span class="pn" data-id="${r.p.id}">${esc(r.p.name)}</span><span class="muted" style="font-size:10px">${r.p.mlb}</span></td><td><span class="chip">${r.who===M.me.name?'YOU':'OPP'}</span></td><td>${r.p.slot||r.p.pos||'P'}</td><td style="color:var(--blu);font-weight:800">${mxFmt(r.proj)}</td><td>${r.act==null?'<span class="muted">—</span>':'<b>'+mxFmt(r.act)+'</b>'}</td><td style="color:${r.diff==null?'var(--mut)':(r.diff>=0?'var(--grn)':'var(--red)')}">${r.diff==null?'—':((r.diff>=0?'+':'')+mxFmt(r.diff))}</td></tr>`).join("")}
+ </tbody></table></div><div class="lgd">Every player's Claude projection vs ESPN actual for the selected day (or full week) — both rosters, hitters + pitchers. Step through the days above.</div></div>`;
+}
+function analytics(){
+ const A=DATA.analytics;
+ let h=`<div class="panel"><b>Analytics.</b> Positional value, VORP, momentum, schedule strength and league leaders.</div>
+ <div class="sec"><span class="pip"></span>Your Roster — Positional Grades</div>
+ <div class="cards">${A.rosterGrade.map(g=>`<div class="card"><div class="lab">${g.pos}</div><div class="big" style="color:${gradeColor(g.grade)}">${g.grade}</div><div class="note">${esc(g.best)}<br>${g.edge>=0?'+':''}${g.edge} vs replacement</div></div>`).join("")}</div>
+ <div class="lgd">Grade = your starter(s) at each spot vs a replacement-level player. Your edges are OF and SP; your soft spots are the infield corners and bullpen.</div>
+
+ <div class="two">
+ <div><div class="sec"><span class="pip"></span>Strength of Schedule (remaining)</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th class="l">Team</th><th>Avg Opp</th><th>Difficulty</th></tr></thead><tbody>
+ ${A.sos.map((s,i)=>`<tr style="${s.code==='WWT'?'background:rgba(46,236,174,.13)':''}"><td class="l">${esc(s.name)}${s.code==='WWT'?' ':''}</td><td>${s.avgOpp}</td><td style="font-weight:800;color:${i<3?'var(--grn)':i>6?'var(--red)':'var(--yellow)'}">${i<3?'EASY':i>6?'HARD':'MED'}</td></tr>`).join("")}
+ </tbody></table></div><div class="lgd">Lower avg-opponent projection = easier remaining slate.</div></div></div>
+ <div><div class="sec"><span class="pip"></span>Buy-Low Targets (on other teams)</div>
+ <div id="a-buy"></div>
+ <div class="sec"><span class="pip"></span>Sell-High / Regression (your roster)</div>
+ <div class="panel">${A.sellHigh.length?A.sellHigh.map(p=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span class="pn" data-id="${p.id}">${esc(p.name)}</span><span class="muted">${p.pos}</span><span style="color:var(--org);font-weight:800">${p.std}→${p.myros}</span></div>`).join(""):'<span class="muted">None — your roster is projecting steady or up.</span>'}<div class="lgd">My rest-of-season projection sits below their season pace — sell on name value before regression.</div></div></div>
+ </div>
+
+ <div class="sec"><span class="pip"></span>League Leaders — Hitters (by My ROS value)</div><div id="a-lh"></div>
+ <div class="sec"><span class="pip"></span>League Leaders — Pitchers (by My ROS value)</div><div id="a-lp"></div>
+ <div class="sec"><span class="pip"></span> Hottest Risers (league-wide, recent pace)</div><div id="a-ris"></div>`;
+ h+=`<div class="sec"><span class="pip"></span>Player Proj vs Actual — Day by Day</div><div class="daynav" id="apnav"></div><div id="apbody"></div>
+ <div class="sec"><span class="pip"></span>Claude Proj vs ESPN Actual — Daily (this week)</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th class="l">Day</th><th>Claude Proj</th><th>ESPN Actual</th><th>Diff</th><th>Accuracy</th></tr></thead><tbody>
+ ${DATA.accuracy.dayByDay.map(d=>`<tr><td class="l">${d.day}</td><td style="color:var(--teal);font-weight:800">${d.proj}</td><td>${d.actual==null?'<span class="muted">—</span>':'<b>'+d.actual+'</b>'}</td><td style="color:${d.actual==null?'var(--mut)':(d.actual-d.proj>=0?'var(--grn)':'var(--red)')}">${d.actual==null?'—':((d.actual-d.proj>=0?'+':'')+(d.actual-d.proj))}</td><td>${d.actual==null?'—':'<b style="color:var(--grn)">'+Math.round(100-Math.abs(d.actual-d.proj)/Math.max(1,d.actual)*100)+'%</b>'}</td></tr>`).join("")}
+ </tbody></table></div><div class="lgd">My daily team projection vs ESPN's actual scoring. Fills in each morning as games finalize.</div></div>
+ <div class="sec"><span class="pip"></span>Claude Proj vs ESPN Actual — Weekly</div>
+ <div class="panel"><div class="tbl"><table><thead><tr><th>MP</th><th class="l">Opponent</th><th>Claude Proj</th><th>ESPN Actual</th><th>Diff</th><th>Accuracy</th></tr></thead><tbody>
+ ${DATA.accuracy.weekByWeek.map(w=>`<tr><td>${w.mp}</td><td class="l">${esc(w.opp)}</td><td style="color:var(--teal);font-weight:800">${w.proj}</td><td>${w.actual==null?'<span class="muted">in progress</span>':'<b>'+w.actual+'</b>'}</td><td>${w.err==null?'—':(w.err>=0?'+':'')+w.err}</td><td>${w.acc==null?'—':'<b style="color:var(--grn)">'+w.acc+'%</b>'}</td></tr>`).join("")}
+ </tbody></table></div></div>`;
+ document.getElementById("t-analytics").innerHTML=h;apRender();
+ fill2("a-buy",A.buyLow,leadCols("ANY"),"vorp");
+ fill2("a-lh",A.leadersHit,leadCols("H"),"myros");
+ fill2("a-lp",A.leadersPit,leadCols("P"),"myros");
+ fill2("a-ris",A.risers,leadCols("ANY"),"myros");
+}
+
+hud();dash();matchup();team();players();waiver();strategy();analytics();show("dash");
+</script>
+</body>
+</html>
