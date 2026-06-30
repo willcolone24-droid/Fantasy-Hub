@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-# Run AFTER generate_hub2.py. Applies the accumulating actuals_log.json (per scoring period)
-# into the matchup (per-day per-player actual points) + the Projection Accuracy log.
+# Applies actuals_log.json (per scoring period) into the matchup + Projection Accuracy.
+# SP0 (day-1 scoring period) is derived from the log, so it self-adjusts each matchup week.
 import json, os
-SP0=97  # MP14 day-1 scoring period (Mon Jun 29). Updated weekly by the refresh task.
 if not os.path.exists("actuals_log.json"):
     print("no actuals_log.json"); raise SystemExit
 log=json.load(open("actuals_log.json"))
+if not log:
+    print("empty actuals_log"); raise SystemExit
+SP0=min(int(k) for k in log)
 d=json.load(open("hub_data.json")); m=d["matchup"]; acc=d["accuracy"]
 def apply(sp,side,key):
     idx=int(sp)-SP0
@@ -18,7 +20,7 @@ def apply(sp,side,key):
         i2=int(spk)-SP0
         if 0<=i2<7: m["actualTeam"][key][i2]=round(pts)
         if key=="me" and 0<=i2<len(acc["dayByDay"]): acc["dayByDay"][i2]["actual"]=round(pts)
-for sp,entry in log.items():
+for sp,entry in sorted(log.items(), key=lambda kv:int(kv[0])):
     apply(sp,entry["me"],"me"); apply(sp,entry["opp"],"opp")
 m["hasActuals"]=any(x is not None for x in m["actualTeam"]["me"])
 played=[x["actual"] for x in acc["dayByDay"] if x["actual"] is not None]
@@ -26,4 +28,4 @@ if len(played)>=7:
     tot=sum(played); w=acc["weekByWeek"][0]; w["actual"]=tot; w["err"]=tot-w["proj"]
     w["acc"]=round(100-abs(w["err"])/tot*100) if tot else None
 json.dump(d,open("hub_data.json","w"))
-print("injected days:", [i for i,x in enumerate(m['actualTeam']['me']) if x is not None], "| my totals", m["actualTeam"]["me"])
+print("injected; my daily actuals:", m["actualTeam"]["me"])
