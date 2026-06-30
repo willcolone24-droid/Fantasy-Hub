@@ -1,0 +1,45 @@
+name: Daily Fantasy Hub Refresh
+on:
+  schedule:
+    - cron: "0 11 * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build hub from live ESPN data
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+        run: python3 cloud_build.py
+      - name: Commit refreshed data
+        run: |
+          git config user.name "fantasy-hub-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          git commit -m "daily refresh" || echo "no changes"
+          git push || echo "nothing to push"
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
